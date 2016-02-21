@@ -1,4 +1,4 @@
-# Henderson-Painter-Language-HPL
+# Henderson Painter Language(HPL) Interpreter
 This is the repository for code written for an interpreter for a Language Processors course offered at the University of the West Indies, Mona Campus. The description of both the Language and the problem are provided as pdf files in the repository. The application was given a  75/60.
 
 #Instructions on how to run
