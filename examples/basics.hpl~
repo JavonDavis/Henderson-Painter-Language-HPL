@@ -1,0 +1,16 @@
+def-painter beside[a](p1, p2):
+   paint p1 in subframe((0, 0), a, 1)
+   paint p2 in subframe((a, 0), 1-a, 1)
+end
+
+def-painter below[a](p1, p2):
+   paint p1 in subframe((0, 0), 1, a)
+   paint p2 in subframe((0, a), 1, 1-a)
+end
+
+def-painter inset[n, a](p):
+   paint p in subframe((0, 0), 1, 1)
+   if n > 0:
+      paint inset[n-1, a](p) in subframe((a, a), 1-2*a, 1-2*a)
+   end
+end

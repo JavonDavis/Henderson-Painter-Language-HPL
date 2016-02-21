@@ -1,0 +1,43 @@
+Program -> SL
+SL -> SL S| e
+S -> var = PE |PS| WS |FD | CS
+PS -> paint PE|paint PE in FE
+FE -> F((AE,AE),(AE,AE),(AE,AE))|SF((AE,AE),AE,AE)
+WS -> wait AE
+PE -> PRE|var|(PE)|FC
+PRE -> img_painter(file)
+PLE -> PL|e
+PL -> PL,var|var
+PTL -> PTL, PE | PE
+PTLE -> PTL | e;
+EXPLE -> EXPL|e
+EXPL -> EXPL,AE|AE
+AE -> AE + AT | AE-AT| AT
+AT = AT * AF|AT/AF|AT%AF|AF
+ACF -> I|FR|(AE)
+AF-> ACF|var|-AF
+
+LE -> AE CMP AE | LT
+LT -> LE
+LF -> LCMP LT|e
+CS -> IF LE : SL END | IF LE : SL ELSE SL END
+FD -> def-painter var[PLE](PLE): SL end
+FC -> var[EXPLE](PTLE)
+
+NOT LPAREN logicExp:e RPAREN {: RESULT = new LogicExpCmpLog(e); :} | 
+			 LPAREN logicExp:e RPAREN {: RESULT = e; :} | 
+
+
+
+logicExp ::= arithExp:op1 CMP:opt arithExp:op2 {: RESULT = new LogicExpCmpAIR(op1,op2,opt); :} |
+			  logicTerm:t {: RESULT = t; :};
+
+logicTerm ::= logicTerm:lt LCMP:op logicExp:le {: RESULT = new LogicExpCmpLog(le,lt,op); :} | logicFactor:e {: RESULT = e :}; 
+
+logicFactor ::= logicExp:e {: RESULT = e :};
+
+conditionStmt ::= IF logicExp:le COLON stmtList:lst END {: RESULT = new PIRConditionalStatement(le,lst); :} |
+			 IF logicExp:le COLON stmtList:lst ELSE stmtList:lst2 END {: RESULT = new PIRConditionalStatement(le,lst,lst2); :};
+
+			 paint p1 in subframe((a, a), 1- 2*a, 2*a)
+

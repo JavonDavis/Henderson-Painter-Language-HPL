@@ -1,0 +1,42 @@
+# juxtapose horizontally two given painters
+def-painter beside[a](p1, p2):
+   paint p1 in subframe((0, 0), a, 1)
+   paint p2 in subframe((a, 0), 1-a, 1)
+end
+
+# juxtapose vertically two given painters
+def-painter below[a](p1, p2):
+   paint p1 in subframe((0, 0), 1, a)
+   paint p2 in subframe((0, a), 1, 1-a)
+end
+
+# counterclockwise rotation
+def-painter rotate90[](p):
+   paint p in frame((1, 0), (0, 1), (-1, 0))
+end
+
+# horizontal flip
+def-painter flip[](p):
+   paint p in frame((1, 0), (-1, 0), (0, 1))
+end
+
+# Border p1 with p2 on its left and right in equal proportions
+def-painter vband[a](p1, p2):
+   paint p2 in subframe((0, 0), (1 - a)/2, 1)
+   paint p1 in subframe(((1 - a)/2, 0), a, 1)
+   paint p2 in subframe(((1 + a)/2, 0), (1 - a)/2, 1)
+end
+
+# Border p1 with p2 below and above it in equal proportions
+def-painter uband[a](p1, p2):
+   paint p2 in subframe((0, 0), 1, (1 - a)/2)
+   paint p1 in subframe((0, (1 - a)/2), 1, a)
+   paint p2 in subframe((0, (1 + a)/2), 1, (1 - a)/2)
+end
+
+def-painter disperse[a](p1, p2):
+   strip212 = vband[a](p1, p2)
+   strip121 = vband[a](p2, p1)
+   paint uband[a](strip212, strip121)
+end
+

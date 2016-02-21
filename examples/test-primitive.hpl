@@ -1,0 +1,11 @@
+crest = img-painter("images/uwicrest.jpg")
+wasp = img-painter("images/wasp.jpg")
+
+paint crest
+wait 1000
+paint wasp
+wait 1000
+
+paint img-painter("images/uwicrest.jpg")
+VAR:fn LBRACKET paramListE:aParams RBRACKET LPAREN paramListE:pParams RPAREN COLON
+					stmtList:statements END

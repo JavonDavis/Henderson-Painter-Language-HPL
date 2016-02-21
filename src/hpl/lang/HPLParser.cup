@@ -1,0 +1,246 @@
+package hpl.lang;
+
+
+import java_cup.runtime.*;
+import java.io.*;
+import java.util.*;
+
+/* Preliminaries to set up and use the scanner.  */
+action code {:          :};
+
+parser code {:
+		HPLLexer lexer;
+
+		public HPLParser(HPLLexer l) {
+                    super(l);
+                    lexer = l;
+                }
+
+		public HPLParser(String file) throws FileNotFoundException {
+	            this(new HPLLexer(new FileReader(file)));
+		}
+
+                public HPLParser(InputStream is) {
+                    this(new HPLLexer(is));
+                }
+
+		public void report_error(String message, Object info) {
+		    System.err.println(message + info);
+		}
+
+		public void syntax_error(Symbol cur_token) {
+		    System.err.print("Line " + lexer.getLine() +
+				     " near char " + lexer.getChar() + ": ");
+		    report_error("Syntax error while reading: ", cur_token);
+		    System.err.println ("Last token read is " +
+					 lexer.getText());
+		}
+	    :};
+
+init with {:
+		// No longer necessary		
+	  :};
+scan with {:
+		try {
+		    return lexer.next_token();
+		} catch (java.io.IOException ioe) {
+		    System.out.println ("Unrecognised token at line: " + 
+                                lexer.getLine() + ", char: " + lexer.getChar());
+		    System.out.println(ioe.getMessage());
+		    throw ioe;
+		}
+	  :};
+
+/* Terminals (tokens returned by the scanner). */
+
+/* Keywords */
+terminal DEF_PAINTER, PAINT, ASSIGN;
+terminal IMG_PAINTER, FRAME, SUBFRAME;
+terminal LET, WAIT;
+
+/* Arithmetic operators */ 
+terminal PLUS, MINUS, TIMES, DIV, MOD;
+/* Punctuation */
+terminal LPAREN, RPAREN, LBRACKET, RBRACKET, SEMI, COMMA, COLON, IN, END;
+
+terminal Integer INTEGER;
+terminal Double FRACTION;
+terminal Double REAL;
+terminal String VAR;
+terminal String STRING;
+
+/* Non terminals */
+non terminal PIRProgram program;
+
+non terminal PIRSequence stmtList;
+non terminal PIRStatement stmt;
+non terminal PIRStatement waitStmt;
+non terminal PIRPaintStmt paintStmt;
+
+non terminal PIRFrameExp frameExp;
+
+non terminal ASTExp<PIRExp> painterExp;
+non terminal PIRFunCall funCall;
+non terminal ASTExp<PIRExp> primitiveExp;
+
+/* *** Logic extensions (in support of IF) *** */
+terminal String CMP, LCMP;
+// place your extensions here, if you do this problem
+terminal IF, ELSE, NOT;
+non terminal PIRConditionalStatement conditionStmt;
+non terminal ASTExp<LogicExp> logicExp;
+non terminal ASTExp<LogicExp> logicFactor;
+
+/* *** End of logic extensions *** */
+
+non terminal ASTExp<AIRExp> arithExp;
+non terminal ASTExp<AIRExp> arithTerm;
+non terminal ASTExp<AIRExp> arithConstFactor;
+non terminal ASTExp<AIRExp> arithFactor;
+
+non terminal ArrayList<ASTExp<AIRExp>> aExpList;   /* non-empty arith exp list */
+non terminal ArrayList<ASTExp<AIRExp>> aExpListE;  /* potentially empty arith exp list */
+non terminal ArrayList<ASTExp<PIRExp>> pExpList;   /* non-empty painter exp list */
+non terminal ArrayList<ASTExp<PIRExp>> pExpListE;  /* potentially empty painter exp list */
+
+non terminal ArrayList<String> paramList;
+non terminal ArrayList<String> paramListE;
+non terminal empty;
+
+
+/* Fill in the rest of your non terminal declarations here */
+
+non terminal PIRFunDefinition funDefinition;
+
+/* Grammar rules */
+
+start with program;
+
+program ::= stmtList:seq {:
+		RESULT = new PIRProgram(seq);
+	    :};
+
+stmtList ::= stmtList:seq stmt:s {:
+		  seq.addStatement(s);
+		  RESULT = seq; :} |
+	     empty {:
+		  RESULT = new PIRSequence(); :};
+
+stmt ::=   VAR:id ASSIGN painterExp:e {: RESULT = new PIRAssignment(id, e); :} |
+           paintStmt: s {: RESULT = s; :} |
+           waitStmt: s {: RESULT = s; :} |
+           funDefinition:fd {: RESULT = fd; :} |
+           conditionStmt:cs {: RESULT = cs; :};
+
+paintStmt ::= PAINT painterExp:e {: RESULT = new PIRPaintStmt(e); :} |
+			PAINT painterExp:e IN frameExp:fe {: RESULT = new PIRPaintStmt(e,fe); :}; /* Finish this */
+
+/* 
+   ** You will need to implement function definition **
+*/
+
+funDefinition ::= DEF_PAINTER VAR:fn LBRACKET paramListE:aParams RBRACKET LPAREN paramListE:pParams RPAREN COLON
+					stmtList:statements END {:
+						RESULT = new PIRFunDefinition(fn, aParams,pParams,statements);
+						:};
+
+frameExp ::= FRAME LPAREN LPAREN arithExp:ox COMMA arithExp:oy RPAREN COMMA 
+		LPAREN arithExp:ux COMMA arithExp:uy RPAREN COMMA 
+		LPAREN arithExp:vx COMMA arithExp:vy RPAREN RPAREN {: 
+	        RESULT = new PIRFrameExp(ox, oy, ux, uy, vx, vy); 
+		:}
+		| SUBFRAME LPAREN LPAREN arithExp:ox COMMA arithExp:oy RPAREN COMMA 
+		arithExp:ux COMMA 
+		arithExp:vy RPAREN {: 
+			AIRExpInt uy = new AIRExpInt(0);
+			AIRExpInt vx = new AIRExpInt(0);
+	        RESULT = new PIRFrameExp(ox, oy, ux, uy, vx, vy); 
+		:};  
+
+waitStmt ::= WAIT arithExp:t {: RESULT = new PIRWaitStmt(t); :};
+
+painterExp ::=  primitiveExp: primExp {: RESULT = primExp; :} |
+	        VAR:v {: RESULT = new ASTVar<PIRExp>(v); :} |
+	        LPAREN painterExp:e RPAREN {: RESULT = e; :} |
+           funCall: fc {: RESULT = fc; :};
+	        
+
+primitiveExp ::= IMG_PAINTER LPAREN STRING:file RPAREN {: 
+                         RESULT = new PIRImagePainter(file); :};
+
+/*
+	// Implement funCall production rule(s)
+*/
+
+funCall ::= VAR:fn LBRACKET aExpListE:lst RBRACKET LPAREN pExpListE: painters RPAREN {:
+			RESULT = new PIRFunCall(fn,lst,painters);
+	:};
+
+
+logicExp ::= logicFactor:lf1 LCMP:opt logicExp:lf2 {: RESULT = new LogicExpCmpLog(lf1,lf2,opt); :} | logicFactor:le {: RESULT = le; :} | NOT LPAREN logicExp:e RPAREN {: RESULT = new LogicExpCmpLog(e); :} | 
+			 LPAREN logicExp:e RPAREN {: RESULT = e; :};
+logicFactor ::= arithExp:op1 CMP:opt arithExp:op2 {: RESULT = new LogicExpCmpAIR(op1,op2,opt); :};
+
+conditionStmt ::= IF logicExp:le COLON stmtList:lst END {: RESULT = new PIRConditionalStatement(le,lst); :} |
+			 IF logicExp:le COLON stmtList:lst ELSE COLON stmtList:lst2 END {: RESULT = new PIRConditionalStatement(le,lst,lst2); :};
+
+paramListE ::= paramList:lst {: RESULT = lst; :} |
+	       empty {: RESULT = new ArrayList<>(); :} ;
+
+paramList ::= paramList:lst COMMA VAR:id {:
+		lst.add(id);
+		RESULT = lst; :} |
+	      VAR:id {:
+		RESULT = new ArrayList<>();
+		RESULT.add(id);
+	      :};
+
+aExpList ::= aExpList:lst COMMA arithExp:e {:
+	          lst.add(e);
+		  RESULT = lst;
+	     :} |
+	     arithExp:e {:
+		  RESULT = new ArrayList<>();
+		  RESULT.add(e);
+	     :};
+
+aExpListE ::= aExpList:lst {: RESULT = lst; :} |
+	      empty {: RESULT = new ArrayList<>(); :};
+
+
+/* 
+   ** You will also need separate rules for a list of painter expressions **
+*/
+
+pExpList ::= pExpList:lst COMMA painterExp:e {:
+					lst.add(e);
+					RESULT = lst;
+				:} | 
+				painterExp:e {:
+					RESULT = new ArrayList<>();
+					RESULT.add(e);
+					:};
+
+pExpListE ::= pExpList: lst {: RESULT = lst; :} |
+				empty {: RESULT = new ArrayList<>(); :};
+
+arithExp ::= arithExp:e PLUS arithTerm:t {: RESULT = new ASTBinaryExp<AIRExp>("+", e, t); :} |
+	     arithExp:e MINUS arithTerm:t {: RESULT = new ASTBinaryExp<AIRExp>("-", e, t); :} |
+	     arithTerm:t {: RESULT = t; :};
+
+arithTerm ::= arithTerm:t TIMES arithFactor:f {: RESULT = new ASTBinaryExp<AIRExp>("*", t, f); :}|
+	      arithTerm:t DIV arithFactor:f {: RESULT = new ASTBinaryExp<AIRExp>("/", t, f); :}|
+	      arithTerm:t MOD arithFactor:f {: RESULT = new ASTBinaryExp<AIRExp>("%", t, f); :}|
+	      arithFactor:f {: RESULT = f; :};
+
+arithConstFactor ::= INTEGER:ilit {: RESULT = new AIRExpInt(ilit); :} |
+		     FRACTION:frac {: RESULT = new AIRExpFrac(frac); :} |
+		     LPAREN arithExp:e RPAREN {: RESULT = e; :};
+
+arithFactor ::= arithConstFactor:cf {: RESULT = cf; :} |
+		VAR:var {: RESULT = new ASTVar(var); :} |
+                MINUS arithFactor:f {: 
+		      RESULT = new ASTUnaryExp<AIRExp>("-", f); 
+		:} ;
+
+empty ::= ;
